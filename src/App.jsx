@@ -1,58 +1,88 @@
 import { Component } from 'react';
 import Searchbar from './components/SearchBar/Searchbar';
 import ImageGallery from './components/ImageGallery/ImageGallery';
-import Loader from './components/Loader/Loader';
+import Loader from 'react-loader-spinner';
 import Button from './components/Button/Button';
 import Modal from './components/Modal/Modal';
-import { apiKey, BASE_URL } from './api/api';
-import axios from 'axios';
+import getImages from './api/api';
+import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
 
 class App extends Component {
   state = {
     data: [],
     pageNumber: 1,
-    query: '',
-    perPage: 12,
+    searchQuery: '',
+    isLoading: false,
+    showModal: false,
+    largeImage: '',
+    error: null,
   };
 
-  async componentDidMount() {
-    const { pageNumber, perPage } = this.state;
-    await axios
-      .get(
-        `${BASE_URL}/?page=${pageNumber}&key=${apiKey}&image_type=photo&orientation=horizontal&per_page=${perPage}`,
-      )
-      .then(response => this.setState({ data: response.data.hits }));
+  onChangeQuery = query => {
+    this.setState({ searchQuery: query });
+  };
+
+  fetchPictures = () => {
+    const { pageNumber, searchQuery } = this.state;
+    this.setState({ isLoading: true });
+    const options = { searchQuery, pageNumber };
+    getImages(options)
+      .then(hits => {
+        this.setState(prevState => ({
+          data: [...prevState.data, ...hits],
+          pageNumber: prevState.pageNumber + 1,
+        }));
+      })
+      .then(() => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth',
+        });
+      })
+      .catch(error => this.setState({ error }))
+      .finally(() => this.setState({ isLoading: false }));
+  };
+
+  componentDidUpdate(_, prevState) {
+    if (prevState.searchQuery !== this.state.searchQuery) {
+      this.setState({ data: [] });
+      this.fetchPictures();
+    }
   }
 
-  // searchImage({ target }) {
-  //   this.setState(() => ({
-  //     query: target.value,
-  //   }));
-  //   console.log(this.state.query);
-  // }
-
-  // async componentDidUpdate(event) {
-  //   const { query, pageNumber, perPage } = this.state;
-  //   this.setState(() => ({
-  //     query: event.target.value,
-  //   }));
-  //   await axios.get(
-  //     `${BASE_URL}/?q=${query}&page=${pageNumber}&key=${apiKey}&image_type=photo&orientation=horizontal&per_page=${perPage}`,
-  //   );
-  // }
+  toggleModal = () => {
+    this.setState(({ showModal }) => ({
+      showModal: !showModal,
+    }));
+  };
+  onImageClick = url => {
+    this.setState({ largeImage: url });
+    this.toggleModal();
+  };
 
   render() {
-    const { data } = this.state;
-    // const onSearch = this.searchImage();
+    const { data, isLoading, error, largeImage, showModal } = this.state;
+    const visibleLoadMoreBtn = data.length && !isLoading;
+
     return (
-      <>
-        <Searchbar />
-        <ImageGallery galleryImage={data} />
-        {/*
-        <Loader />
-        <Button />
-        <Modal></Modal> */}
-      </>
+      <div className="App">
+        {error && <h1>Something gone wrong :\</h1>}
+        {showModal && (
+          <Modal largeUrl={largeImage} onClose={this.toggleModal} />
+        )}
+        <Searchbar onSubmit={this.onChangeQuery} />
+        <ImageGallery imagesData={data} onClick={this.onImageClick} />
+        {visibleLoadMoreBtn && <Button loadMore={this.fetchPictures} />}
+        {isLoading && (
+          <Loader
+            type="Puff"
+            color="#00BFFF"
+            height={100}
+            width={100}
+            timeout={3000}
+          />
+        )}
+      </div>
     );
   }
 }
