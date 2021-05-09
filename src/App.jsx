@@ -62,7 +62,7 @@ class App extends Component {
 
   render() {
     const { data, isLoading, error, largeImage, showModal } = this.state;
-    const visibleLoadMoreBtn = data.length && !isLoading;
+    const visibleLoadMoreBtn = data.length > 0 && !isLoading;
 
     return (
       <div className="App">
@@ -75,10 +75,11 @@ class App extends Component {
         {visibleLoadMoreBtn && <Button loadMore={this.fetchPictures} />}
         {isLoading && (
           <Loader
-            type="Puff"
+            className="Loader"
+            type="TailSpin"
             color="#00BFFF"
-            height={100}
-            width={100}
+            height={80}
+            width={80}
             timeout={3000}
           />
         )}
